@@ -94,3 +94,35 @@ def fetch_bybit_candles():
     # Создаем DataFrame
     df = pd.DataFrame(all_candles, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
     return df
+
+def fetch_recent_candles(last_timestamp):
+    """Загрузка только последних свечей с биржи"""
+    # Рассчитываем время начала - последняя свеча + 1 минута
+    start_time = datetime.fromtimestamp(last_timestamp / 1000)
+    end_time = datetime.now()
+    
+    params = {
+        'category': CATEGORY,
+        'symbol': SYMBOL,
+        'interval': str(INTERVAL),
+        'start': int(start_time.timestamp() * 1000),
+        'end': int(end_time.timestamp() * 1000),
+        'limit': 200  # Максимальное количество свечей за запрос
+    }
+    
+    try:
+        response = requests.get(
+            f"{BYBIT_API_URL}/v5/market/kline",
+            params=params,
+            timeout=10
+        )
+        
+        if response.status_code != 200:
+            raise Exception(f"API Error {response.status_code}: {response.text}")
+        
+        data = response.json().get('result', {}).get('list', [])
+        return pd.DataFrame(data, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume', 'turnover'])
+        
+    except Exception as e:
+        print(f"Ошибка при загрузке новых свечей: {str(e)}")
+        return pd.DataFrame()
